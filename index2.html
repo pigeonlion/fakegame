@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>진짜? 가짜! 뉴스 팩트체크 게임</title>
+    <style>
+        :root {
+            --bg-color: #f0f2f5;
+            --card-bg: #ffffff;
+            --primary-color: #4a90e2;
+            --success-color: #2ecc71;
+            --error-color: #e74c3c;
+            --text-color: #333333;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Malgun Gothic', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: var(--text-color);
+        }
+
+        .game-container {
+            width: 100%;
+            max-width: 450px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+
+        /* 카드 스타일 */
+        .card-container {
+            position: relative;
+            height: 500px; /* 전체 이미지를 여유롭게 보여주기 위해 높이 최적화 */
+            margin-bottom: 25px;
+            perspective: 1000px;
+        }
+
+        .card {
+            width: 100%;
+            height: 100%;
+            background: var(--card-bg);
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            transition: all 0.4s ease;
+            border: 4px solid transparent;
+            overflow: hidden;
+        }
+
+        /* 정답/오답 시 카드 상태 변경 */
+        .card.correct {
+            border-color: var(--success-color);
+            background-color: #f4fbf7;
+        }
+
+        .card.incorrect {
+            border-color: var(--error-color);
+            background-color: #fdf5f5;
+        }
+
+        /* 사진 전체 모습을 비율 왜곡이나 잘림 없이 보여주는 핵심 스타일 */
+        .card-img {
+            width: 100%;
+            height: 260px; /* 이미지 보존 영역 고정 */
+            object-fit: contain; /* 이미지 일부를 자르지 않고 전체 다 보여줌 */
+            border-radius: 12px;
+            margin-bottom: 15px;
+            background-color: #f8f9fa; /* 사진 여백을 채워줄 깔끔한 배경색 */
+        }
+
+        .card-headline {
+            font-size: 1.15rem;
+            font-weight: bold;
+            line-height: 1.5;
+            word-break: keep-all;
+            flex-grow: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* 결과 해설 영역 */
+        .result-box {
+            margin-top: auto;
+            padding-top: 10px;
+            font-size: 0.95rem;
+            font-weight: bold;
+            display: none;
+            animation: fadeIn 0.3s ease-in-out;
+            width: 100%;
+        }
+        .correct .result-box { color: var(--success-color); display: block; }
+        .incorrect .result-box { color: var(--error-color); display: block; }
+
+        .reason-text {
+            display: block;
+            margin-top: 5px;
+            font-size: 0.9rem;
+            color: #555;
+            font-weight: normal;
+        }
+
+        /* 버튼 영역 */
+        .btn-container {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            width: 100%;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 15px 0;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            color: white;
+            transition: transform 0.2s, opacity 0.2s;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        .btn-real { background-color: var(--primary-color); }
+        .btn-fake { background-color: #e67e22; }
+        .btn-next { background-color: #34495e; display: none; }
+
+        /* 결과 화면 */
+        .score-screen {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 40px 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            display: none;
+        }
+
+        .score-text {
+            font-size: 2rem;
+            font-weight: bold;
+            margin: 20px 0;
+            color: var(--primary-color);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="game-container">
+    <h1>🚨 뉴스 팩트체크 게임 🚨</h1>
+
+    <div id="game-stage">
+        <div class="card-container">
+            <div class="card" id="news-card">
+                </div>
+        </div>
+
+        <div class="btn-container">
+            <button class="btn btn-real" id="btn-real" onclick="checkAnswer(false)">진짜</button>
+            <button class="btn btn-fake" id="btn-fake" onclick="checkAnswer(true)">가짜</button>
+            <button class="btn btn-next" id="btn-next" onclick="nextCard()">다음 뉴스 ➡️</button>
+        </div>
+    </div>
+
+    <div class="score-screen" id="score-stage">
+        <h2>게임 종료!</h2>
+        <div class="score-text" id="final-score">0 / 3</div>
+        <p>뉴스를 판별하는 능력이 훌륭합니다!</p>
+    </div>
+</div>
+
+<script>
+    // 요청대로 "화재.jpg" 확장자 및 파일명 최종 반영 완료
+    const gameData = [
+        { 
+            "headline": "전기요금 체계가 개편되면서 저녁에 세탁기를 돌리면 요금이 50%나 더 나온다",
+            "isFake": true,
+            "reason": "이는 '산업용 전기'에 적용되는 것으로 '주택용 전기'와는 무관"
+        },
+        {
+            "headline": "손흥민이 홍보하는 강원랜드는 공식이며 합법이다",
+            "isFake": true,
+            "reason": "인공지능을 악용하여 만든 딥페이크 영상",
+            "image": "도박.png"
+        },
+        {
+            "headline": "고양국제고등학교에 불이 나 건물이 전교생이 대피하였고 건물이 붕괴될 뻔했다.",
+            "isFake": true,
+            "reason": "화면 좌측 상단의 방송사 로고는 원래 뉴스화면에 뜨지 않는다",
+            "image": "화재.jpg"
+        }
+    ];
+
+    let currentIndex = 0;
+    let score = 0;
+
+    const cardEl = document.getElementById('news-card');
+    const btnReal = document.getElementById('btn-real');
+    const btnFake = document.getElementById('btn-fake');
+    const btnNext = document.getElementById('btn-next');
+    const gameStage = document.getElementById('game-stage');
+    const scoreStage = document.getElementById('score-stage');
+    const finalScoreEl = document.getElementById('final-score');
+
+    // 카드 업데이트 함수
+    function loadCard() {
+        cardEl.className = 'card';
+        btnReal.style.display = 'inline-block';
+        btnFake.style.display = 'inline-block';
+        btnNext.style.display = 'none';
+
+        const currentData = gameData[currentIndex];
+        let cardContent = '';
+
+        // 이미지 조건부 렌더링
+        if (currentData.image) {
+            cardContent += `<img src="${currentData.image}" class="card-img" alt="뉴스 이미지" onerror="this.style.display='none';">`;
+        } else {
+            cardEl.style.justifyContent = 'center';
+        }
+
+        cardContent += `
+            <div class="card-headline">${currentData.headline}</div>
+            <div class="result-box">
+                <span class="result-title"></span>
+                <span class="reason-text">💡 이유: ${currentData.reason}</span>
+            </div>
+        `;
+
+        cardEl.innerHTML = cardContent;
+    }
+
+    // 정답 확인 함수
+    function checkAnswer(userChoice) {
+        const currentData = gameData[currentIndex];
+        const resultTitle = cardEl.querySelector('.result-title');
+
+        if (userChoice === currentData.isFake) {
+            score++;
+            cardEl.classList.add('correct');
+            resultTitle.innerText = '⭕ 정답입니다!';
+        } else {
+            cardEl.classList.add('incorrect');
+            resultTitle.innerText = '❌ 오답입니다!';
+        }
+
+        btnReal.style.display = 'none';
+        btnFake.style.display = 'none';
+        btnNext.style.display = 'inline-block';
+    }
+
+    // 다음 카드로 넘어가기
+    function nextCard() {
+        currentIndex++;
+        cardEl.style.justifyContent = 'flex-start'; 
+
+        if (currentIndex < gameData.length) {
+            loadCard();
+        } else {
+            showResult();
+        }
+    }
+
+    // 최종 결과 출력
+    function showResult() {
+        gameStage.style.display = 'none';
+        scoreStage.style.display = 'block';
+        finalScoreEl.innerText = `${score} / ${gameData.length}`;
+    }
+
+    // 첫 번째 게임 카드 로드
+    loadCard();
+</script>
+
+</body>
+</html>
